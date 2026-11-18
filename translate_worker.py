@@ -30,7 +30,7 @@ def detect(text):
         _detector = (LanguageDetectorBuilder.from_languages(*by_code.values())
                      .with_minimum_relative_distance(0.2).build(), {v: k for k, v in by_code.items()})
     det, codes = _detector
-    plain = re.sub(r"https?://\S+|ZQ\d+ZQ", " ", text)
+    plain = re.sub(r"https?://\S+|ZQ\d+ZQ|\w*_\w*", " ", text)
     if len(re.findall(r"\w+", plain)) < 2:
         return None
     return codes.get(det.detect_language_of(plain))
@@ -100,7 +100,7 @@ def build(name):
         enc = tok(text, return_tensors="pt", truncation=True, max_length=512)
         out = model.generate(**enc, num_beams=4, max_new_tokens=512,
                              forced_bos_token_id=tok.convert_tokens_to_ids(NLLB[dst]))
-        return tok.decode(out[0], skip_special_tokens=True)
+        return re.sub(r"\s+([.,])", r"\1", tok.decode(out[0], skip_special_tokens=True))
     return run
 
 
@@ -137,6 +137,9 @@ for line in sys.stdin:
             emit({"id": req["id"], "text": listing()})
             continue
         text, keep = protect(req["text"])
+        if keep and not re.search(r"\w", re.sub(r"ZQ\d+ZQ", "", text)):
+            emit({"id": req["id"], "text": restore(text, keep), "src": req.get("assume") or req["dst"]})
+            continue
         src = detect(text) or req.get("assume")
         if src is None or src == req["dst"] or active not in loaded:
             emit({"id": req["id"], "skip": True})

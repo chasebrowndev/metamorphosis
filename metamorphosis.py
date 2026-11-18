@@ -18,7 +18,7 @@ DEFAULT_MODEL = "nllb-600m"
 state = {}      # "*" / buffer full_name -> {"in": lang, "out": lang, "on": bool}; "model" -> name
 pending = {}    # request id -> callback(text, src); text is None when skipped
 bypass = set()  # outgoing strings we re-send ourselves
-sent = {}       # translated outgoing string -> its language, for labelling our echo
+sent = {}       # translated outgoing string -> (language, unlabelled remainder), for labelling our echo (WeeChat may split it)
 seen_err = set()
 proc = None
 rbuf = ""
@@ -131,8 +131,18 @@ def in_cb(data, buf, date, tags, displayed, highlight, prefix, message):
 
 
 def line_cb(data, line):
-    lang = sent.pop(line["message"], None)
-    return {"message": f"{GREY}[{lang.upper()}] {line['message']}"} if lang else {}
+    msg = line["message"]
+    lang = None
+    for key, (l, rest) in list(sent.items()):
+        if msg in rest:
+            lang = l
+            rest = rest.replace(msg, "", 1).strip()
+            if rest:
+                sent[key] = (l, rest)
+            else:
+                del sent[key]
+            break
+    return {"message": f"{GREY}[{lang.upper()}] {msg}"} if lang else {}
 
 
 def out_cb(data, modifier, buf, string):
@@ -151,7 +161,7 @@ def out_cb(data, modifier, buf, string):
             weechat.command(buf, string)
             return
         bypass.add(out)
-        sent[out] = dst
+        sent[out] = (dst, out)
         weechat.command(buf, out)
         weechat.prnt_date_tags(buf, 0, MARK + ",no_log", f"\t{WHITE}[{src.upper()}] {string}")
     translate(string, dst, done, cfg(buf).get("in") or "en")

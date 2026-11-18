@@ -23,4 +23,4 @@ Local, offline chat translation for WeeChat with automatic language detection (e
 
 Wrap words in `backticks` to keep them untranslated. URLs are always kept as-is.
 
-Models: `argos` (small, en/es only), `opus-mt` (en/es), `nllb-600m` (default), `nllb-1.3b`.
+Models (both Meta NLLB): `nllb-600m` (default) and `nllb-1.3b` (better, slower, ~5.5GB).

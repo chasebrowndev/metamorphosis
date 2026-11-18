@@ -11,7 +11,7 @@ HERE = os.path.dirname(os.path.realpath(globals().get("__file__", ""))) \
     or os.path.expanduser("~/syncedprojects/Metamorphosis")
 LANGS = {"en": "en", "english": "en", "es": "es", "spanish": "es", "fr": "fr", "french": "fr",
          "de": "de", "german": "de", "ru": "ru", "russian": "ru"}
-MODELS = ("argos", "opus-mt", "nllb-600m", "nllb-1.3b")
+MODELS = ("nllb-600m", "nllb-1.3b")
 MARK = "metamorphosis"
 DEFAULT_MODEL = "nllb-600m"
 
@@ -212,5 +212,5 @@ weechat.hook_command(
     "on/off: pause or resume everything, keeping settings\n"
     "  -b: apply to the current buffer only instead of globally\n"
     "model: list models, or switch to one (downloaded on first use, then fully offline)",
-    "in|out en|es|fr|de|ru|off || on || off || status || model list|argos|opus-mt|nllb-600m|nllb-1.3b"
+    "in|out en|es|fr|de|ru|off || on || off || status || model list|nllb-600m|nllb-1.3b"
     " || -b in|out en|es|fr|de|ru|off || -b on || -b off", "cmd_cb", "")

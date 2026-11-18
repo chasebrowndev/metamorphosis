@@ -4,12 +4,9 @@ import threading
 
 import re
 
-# name -> (description, {"es-en": repo, "en-es": repo} or one repo for both directions)
+# name -> (description, HF repo)
 MODELS = {
-    "argos": ("default, small, fast", None),
-    "opus-mt": ("Helsinki-NLP Marian, ~600MB, better phrasing",
-                {"es-en": "Helsinki-NLP/opus-mt-es-en", "en-es": "Helsinki-NLP/opus-mt-en-es"}),
-    "nllb-600m": ("Meta NLLB distilled 600M, ~2.5GB", "facebook/nllb-200-distilled-600M"),
+    "nllb-600m": ("Meta NLLB distilled 600M, ~2.5GB (default)", "facebook/nllb-200-distilled-600M"),
     "nllb-1.3b": ("Meta NLLB distilled 1.3B, ~5.5GB, best quality, slower", "facebook/nllb-200-distilled-1.3B"),
 }
 NLLB = {"en": "eng_Latn", "es": "spa_Latn", "fr": "fra_Latn", "de": "deu_Latn", "ru": "rus_Cyrl"}
@@ -68,8 +65,7 @@ def emit(obj):
 
 
 def repos(name):
-    spec = MODELS[name][1]
-    return [] if spec is None else (list(spec.values()) if isinstance(spec, dict) else [spec])
+    return [MODELS[name][1]]
 
 
 def fetch(repo):
@@ -94,24 +90,16 @@ def installed(name):
 
 
 def build(name):
-    if name == "argos":
-        import argostranslate.translate as argos
-        return lambda text, src, dst: argos.translate(text, src, dst)
     from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
-    spec = MODELS[name][1]
-    nllb = isinstance(spec, str)
-    parts = {}
-    for key, repo in ({"*": spec} if nllb else spec).items():
-        parts[key] = (AutoTokenizer.from_pretrained(repo), AutoModelForSeq2SeqLM.from_pretrained(repo).eval())
+    repo = MODELS[name][1]
+    tok = AutoTokenizer.from_pretrained(repo)
+    model = AutoModelForSeq2SeqLM.from_pretrained(repo).eval()
 
     def run(text, src, dst):
-        tok, model = parts["*"] if nllb else parts[f"{src}-{dst}"]
-        kw = {}
-        if nllb:
-            tok.src_lang = NLLB[src]
-            kw["forced_bos_token_id"] = tok.convert_tokens_to_ids(NLLB[dst])
+        tok.src_lang = NLLB[src]
         enc = tok(text, return_tensors="pt", truncation=True, max_length=512)
-        out = model.generate(**enc, num_beams=4, max_new_tokens=512, **kw)
+        out = model.generate(**enc, num_beams=4, max_new_tokens=512,
+                             forced_bos_token_id=tok.convert_tokens_to_ids(NLLB[dst]))
         return tok.decode(out[0], skip_special_tokens=True)
     return run
 
@@ -134,7 +122,7 @@ def load(name):
 
 def listing():
     return "\n".join(
-        f"{'*' if n == active else ' '} {n:10} {'installed' if n == 'argos' or installed(n) else 'not downloaded':15} {d}"
+        f"{'*' if n == active else ' '} {n:10} {'installed' if installed(n) else 'not downloaded':15} {d}"
         for n, (d, _) in MODELS.items())
 
 
